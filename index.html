@@ -22,9 +22,9 @@
 .button{background:#173058;border-color:#2a4f8e;cursor:pointer}
 .button.secondary{background:#0f223e}.button.ghost{background:transparent;border-color:#2a3a5d}.button.small{padding:6px 8px;font-size:12px;border-radius:8px}
 .row{display:flex;gap:8px;align-items:center}
-.imgbox{aspect-ratio:16/9;background:#0b1220;border:1px dashed #2a3a5d;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-img{max-width:100%;max-height:100%;display:block}
-.result{padding:10px 12px;background:#0f1a30;border:1px solid var(--border);border-radius:10px;margin-top:8px}
+.imgbox{aspect-ratio:4/3;width:100%;max-height:500px;background:#0b1220;border:1px dashed #2a3a5d;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+img{max-width:100%;max-height:100%;display:block;object-fit:contain}
+.result{padding:10px 12px;background:#0f1a30;border:1px solid var(--border);border-radius:10px;margin-top:8px;color:#fff;font-weight:500}
 .progress{height:8px;background:#0c1730;border-radius:999px;overflow:hidden}
 .progress>div{height:100%;background:linear-gradient(90deg,#2563eb,#0ea5e9);}
 .table{width:100%;border-collapse:collapse}
@@ -34,6 +34,7 @@ img{max-width:100%;max-height:100%;display:block}
 .footer{color:#a5b4fc;font-size:12px;margin-top:8px}
 .thumb{width:112px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
 .option{display:block;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#0d1527;margin:6px 0;cursor:pointer}
+.option.active{background:#2563eb;color:#fff;border-color:#3b82f6}
 hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 .spinner{width:18px;height:18px;border:2px solid #3b82f6;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin 1s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -284,7 +285,7 @@ function nextQuestion(){
     const delta = [1,2,3,5][Math.floor(Math.random()*4)];
     const min = (sp.slot.min??0) + (Math.random()<0.5?-delta:delta);
     const max = sp.slot.max==null ? null : (sp.slot.max + (Math.random()<0.5?-delta:delta));
-    const txt = (max==null ? `${Math.max(0,Math.round(min))}" min` : `${Math.max(0,Math.round(max))}" – ${Math.max(0,Math.round(max))}"`);
+    const txt = (max==null ? `${Math.max(0,Math.round(min))}" min` : `${Math.max(0,Math.round(min))}" – ${Math.max(0,Math.round(max))}"`);
     if(!distract.includes(txt) && txt!==correctText) distract.push(txt);
   }
   const slotOptions = shuffle([correctText, ...distract]);
