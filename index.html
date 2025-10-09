@@ -21,7 +21,7 @@
 .textarea{width:100%;min-height:120px}
 .button{background:#173058;border-color:#2a4f8e;cursor:pointer}
 .button.secondary{background:#0f223e}.button.ghost{background:transparent;border-color:#2a3a5d}.button.small{padding:6px 8px;font-size:12px;border-radius:8px}
-.row{display:flex;gap:8px;align-items:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .imgbox{aspect-ratio:4/3;width:100%;max-height:520px;background:#0b1220;border:1px dashed #2a3a5d;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 img{max-width:100%;max-height:100%;display:block;object-fit:contain}
 .result{padding:12px 14px;background:#0f1a30;border:1px solid var(--border);border-radius:12px;margin-top:10px;color:#fff;font-weight:600}
@@ -33,12 +33,20 @@ img{max-width:100%;max-height:100%;display:block;object-fit:contain}
 .help{color:#93c5fd;font-size:12px}
 .footer{color:#a5b4fc;font-size:12px;margin-top:8px}
 .thumb{width:112px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
-.option{display:block;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:#0d1527;margin:8px 0;cursor:pointer;color:#fff;line-height:1.3}
+.option{display:block;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:#0d1527;margin:8px 0;cursor:pointer;color:#fff;line-height:1.3}
 .option.active{background:#2563eb;color:#fff;border-color:#3b82f6}
 hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 .spinner{width:18px;height:18px;border:2px solid #3b82f6;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin 1s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
-
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.65);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:50}
+.modal{background:#0f1a30;border:1px solid var(--border);border-radius:14px;max-width:680px;width:calc(100% - 28px);padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h3{margin:0 0 8px 0}
+.modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.modal .button{font-size:14px;padding:10px 12px;border-radius:10px}
+.modal .accent{background:#2563eb;border-color:#3b82f6}
+.modal .danger{background:#7f1d1d;border-color:#ef4444}
+/* Mobile tweaks */
 @media (max-width: 900px){
   .container{padding:14px 12px 40px}
   .grid-2{grid-template-columns:1fr !important}
@@ -50,7 +58,6 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
   h1{font-size:22px}
   .imgbox{max-height:360px;border-radius:12px}
 }
-
 </style>
 </head>
 <body>
@@ -69,7 +76,7 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
   <div id="view-quiz" class="card">
     <div class="grid grid-2">
       <div>
-        <div class="imgbox" id="quiz-imgbox"><div class="help">Click <span class="kbd">Start / Next</span> to begin</div></div>
+        <div class="imgbox" id="quiz-imgbox"><div class="help">Fetching images <span class="spinner"></span></div></div>
         <div class="help" style="margin-top:8px">All sizes in inches. Some species use <b>fork length</b> — see notes.</div>
       </div>
       <div>
@@ -83,6 +90,7 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
           <button class="button" id="btn-submit" disabled>Check</button>
           <button class="button secondary" id="btn-next">Start / Next</button>
           <button class="button ghost" id="btn-reset">Reset</button>
+          <button class="button ghost" id="btn-skip">Skip image</button>
         </div>
 
         <div style="margin-top:12px">
@@ -111,7 +119,7 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
         <button class="button small" id="btn-clear">Clear Browser Copy</button>
       </div>
     </div>
-    <p class="help">This saves only in your browser (localStorage). Use Export to back up. Auto‑images use Wikimedia Commons categories; you can also add direct image URLs.</p>
+    <p class="help">This saves only in your browser (localStorage). Auto‑images use Wikimedia Commons categories; you can also add direct image URLs. Verify regulations on myfwc.com.</p>
     <textarea class="textarea" id="bulk-json" placeholder="Paste JSON array of species here to import..."></textarea>
     <hr/>
     <h3 style="margin-top:0">Add a new species</h3>
@@ -133,11 +141,24 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
       <div><div class="label">Max (in, blank = none)</div><input id="new-max" class="input" placeholder="e.g., 27 or blank"></div>
       <div style="grid-column:1/-1"><div class="label">Bag / Limit</div><input id="new-bag" class="input"></div>
       <div style="grid-column:1/-1"><div class="label">Notes</div><input id="new-notes" class="input" placeholder="e.g., Fork length, season, etc."></div>
+      <div style="grid-column:1/-1"><div class="label">Season(s)</div><input id="new-seasons" class="input" placeholder="e.g., Oct 15–May 1; VERIFY"></div>
       <div style="grid-column:1/-1"><div class="label">Image URLs (comma-separated)</div><input id="new-images" class="input" placeholder="https://... , https://..."></div>
     </div>
     <div class="row" style="margin-top:8px"><button class="button" id="btn-add">Add species</button></div>
     <hr/>
     <div id="admin-list"></div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal-backdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modal-title">Result</h3>
+      <div id="modal-body" class="help" style="color:#fff"></div>
+      <div class="actions">
+        <button id="modal-cancel" class="button">Cancel</button>
+        <button id="modal-ok" class="button accent">OK</button>
+      </div>
+    </div>
   </div>
 
   <div class="footer">© <span id="year"></span> – Training tool; always verify current FWC rules before harvest.</div>
@@ -146,50 +167,66 @@ hr{border:0;border-top:1px solid var(--border);margin:12px 0}
 <script>
 // ---------- Data ----------
 const DEFAULT_SPECIES = [
+  // Core fish
   {key:"red_drum",group:"fish",commonName:"Red Drum (Redfish)",scientificName:"Sciaenops ocellatus",commonsCategory:"Sciaenops ocellatus",edible:"yes",
-   slot:{min:18,max:27,note:"Total length"},bagLimit:"NE zone often 1 pp; VERIFY",notes:"Iconic inshore species; black tail spot.",images:[]},
+   slot:{min:18,max:27,note:"Total length"},bagLimit:"NE zone often 1 pp; VERIFY",seasons:"—",notes:"Iconic inshore species; black tail spot.",images:[]},
   {key:"black_drum",group:"fish",commonName:"Black Drum",scientificName:"Pogonias cromis",commonsCategory:"Pogonias cromis",edible:"yes",
-   slot:{min:14,max:24,note:"Total length; VERIFY"},bagLimit:"Often 5 pp; only 1 >24\"/vessel (verify)",notes:"Large old fish less ideal table fare.",images:[]},
+   slot:{min:14,max:24,note:"Total length; VERIFY"},bagLimit:"Often 5 pp; only 1 >24\"/vessel (verify)",seasons:"—",notes:"Large old fish less ideal table fare.",images:[]},
   {key:"seatrout",group:"fish",commonName:"Spotted Seatrout",scientificName:"Cynoscion nebulosus",commonsCategory:"Cynoscion nebulosus",edible:"yes",
-   slot:{min:15,max:19,note:"Total length; VERIFY NE zone"},bagLimit:"Often 3 pp; 1 >19\"/vessel (verify)",notes:"Distinct black spots; yellow mouth.",images:[]},
+   slot:{min:15,max:19,note:"Total length; VERIFY NE zone"},bagLimit:"Often 3 pp; 1 >19\"/vessel (verify)",seasons:"—",notes:"Distinct black spots; yellow mouth.",images:[]},
   {key:"sheepshead",group:"fish",commonName:"Sheepshead",scientificName:"Archosargus probatocephalus",commonsCategory:"Archosargus probatocephalus",edible:"yes",
-   slot:{min:12,max:null,note:"Min only; VERIFY"},bagLimit:"FWC varies; VERIFY",notes:"Human-like teeth for crunching crustaceans.",images:[]},
+   slot:{min:12,max:null,note:"Min only; VERIFY"},bagLimit:"FWC varies; VERIFY",seasons:"—",notes:"Human-like teeth for crunching crustaceans.",images:[]},
   {key:"mangrove_snapper",group:"fish",commonName:"Mangrove (Gray) Snapper",scientificName:"Lutjanus griseus",commonsCategory:"Lutjanus griseus",edible:"yes",
-   slot:{min:10,max:null,note:"Min only; VERIFY"},bagLimit:"Part of snapper aggregate; VERIFY",notes:"Common near structure/bridges.",images:[]},
+   slot:{min:10,max:null,note:"Min only; VERIFY"},bagLimit:"Part of snapper aggregate; VERIFY",seasons:"—",notes:"Common near structure/bridges.",images:[]},
   {key:"flounder",group:"fish",commonName:"Flounder (Southern/Gulf complex)",scientificName:"Paralichthys",commonsCategory:"Paralichthys",edible:"yes",
-   slot:{min:14,max:null,note:"Min only; VERIFY season & size"},bagLimit:"Seasonal changes in recent years; VERIFY",notes:"Ambush predator; both eyes on one side.",images:[]},
+   slot:{min:14,max:null,note:"Min only; VERIFY season & size"},bagLimit:"Seasonal changes in recent years; VERIFY",seasons:"Variable closures; VERIFY",notes:"Ambush predator; both eyes on one side.",images:[]},
   {key:"spanish_mackerel",group:"fish",commonName:"Spanish Mackerel",scientificName:"Scomberomorus maculatus",commonsCategory:"Scomberomorus maculatus",edible:"yes",
-   slot:{min:12,max:null,note:"Fork length; VERIFY"},bagLimit:"Often 15 pp Atlantic; VERIFY",notes:"Bleed & ice quickly; fast swimmers.",images:[]},
+   slot:{min:12,max:null,note:"Fork length; VERIFY"},bagLimit:"Often 15 pp Atlantic; VERIFY",seasons:"—",notes:"Bleed & ice quickly; fast swimmers.",images:[]},
   {key:"pompano",group:"fish",commonName:"Florida Pompano",scientificName:"Trachinotus carolinus",commonsCategory:"Trachinotus carolinus",edible:"yes",
-   slot:{min:11,max:null,note:"Fork length; VERIFY"},bagLimit:"Commonly 6 pp; VERIFY",notes:"Excellent table fare.",images:[]},
+   slot:{min:11,max:null,note:"Fork length; VERIFY"},bagLimit:"Commonly 6 pp; VERIFY",seasons:"—",notes:"Excellent table fare.",images:[]},
   {key:"black_sea_bass",group:"fish",commonName:"Black Sea Bass (Atlantic)",scientificName:"Centropristis striata",commonsCategory:"Centropristis striata",edible:"yes",
-   slot:{min:13,max:null,note:"Min only; seasonal; VERIFY"},bagLimit:"Seasonal bag; VERIFY",notes:"More common offshore but nearshore possible.",images:[]},
+   slot:{min:13,max:null,note:"Min only; seasonal; VERIFY"},bagLimit:"Seasonal bag; VERIFY",seasons:"Atlantic seasons vary; VERIFY",notes:"More common offshore but nearshore possible.",images:[]},
   {key:"whiting",group:"fish",commonName:"Whiting (Southern Kingfish)",scientificName:"Menticirrhus americanus",commonsCategory:"Menticirrhus americanus",edible:"yes",
-   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Default unregulated rule may apply; VERIFY",notes:"Great fried; common surf/inlet catch.",images:[]},
+   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Default unregulated rule may apply; VERIFY",seasons:"—",notes:"Great fried; common surf/inlet catch.",images:[]},
   {key:"bluefish",group:"fish",commonName:"Bluefish",scientificName:"Pomatomus saltatrix",commonsCategory:"Pomatomus saltatrix",edible:"decent",
-   slot:{min:12,max:null,note:"Often fork length; VERIFY"},bagLimit:"Bag differs by zone/season; VERIFY",notes:"Bleed/ice quickly for best flavor.",images:[]},
+   slot:{min:12,max:null,note:"Often fork length; VERIFY"},bagLimit:"Bag differs by zone/season; VERIFY",seasons:"—",notes:"Bleed/ice quickly for best flavor.",images:[]},
   // Sharks
   {key:"bonnethead",group:"shark",commonName:"Bonnethead Shark",scientificName:"Sphyrna tiburo",commonsCategory:"Sphyrna tiburo",edible:"sometimes",
-   slot:{min:0,max:null,note:"Shark complex rules; VERIFY"},bagLimit:"Species grouping & gear rules; VERIFY",notes:"Small hammerhead; careful ID.",images:[]},
+   slot:{min:0,max:null,note:"Shark complex rules; VERIFY"},bagLimit:"Species grouping & gear rules; VERIFY",seasons:"—",notes:"Small hammerhead; careful ID.",images:[]},
   {key:"blacktip_shark",group:"shark",commonName:"Blacktip Shark",scientificName:"Carcharhinus limbatus",commonsCategory:"Carcharhinus limbatus",edible:"sometimes",
-   slot:{min:54,max:null,note:"54\" fork in many regs; VERIFY"},bagLimit:"Shark group & licensing/gear rules; VERIFY",notes:"Do not confuse with spinner shark.",images:[]},
+   slot:{min:54,max:null,note:"54\" fork in many regs; VERIFY"},bagLimit:"Shark group & licensing/gear rules; VERIFY",seasons:"—",notes:"Do not confuse with spinner shark.",images:[]},
   {key:"atlantic_sharpnose",group:"shark",commonName:"Atlantic Sharpnose Shark",scientificName:"Rhizoprionodon terraenovae",commonsCategory:"Rhizoprionodon terraenovae",edible:"sometimes",
-   slot:{min:0,max:null,note:"Small coastal shark group; VERIFY"},bagLimit:"Often grouped; VERIFY",notes:"Common small coastal shark.",images:[]},
+   slot:{min:0,max:null,note:"Small coastal shark group; VERIFY"},bagLimit:"Often grouped; VERIFY",seasons:"—",notes:"Common small coastal shark.",images:[]},
   // Crabs
   {key:"blue_crab",group:"crab",commonName:"Blue Crab",scientificName:"Callinectes sapidus",commonsCategory:"Callinectes sapidus",edible:"yes",
-   slot:{min:0,max:null,note:"Sex/size/gear rules; VERIFY"},bagLimit:"Trap/taking rules; VERIFY",notes:"Excellent eating.",images:[]},
+   slot:{min:0,max:null,note:"Sex/size/gear rules; VERIFY"},bagLimit:"Trap/taking rules; VERIFY",seasons:"—",notes:"Excellent eating.",images:[]},
   {key:"stone_crab",group:"crab",commonName:"Stone Crab (claws only)",scientificName:"Menippe mercenaria",commonsCategory:"Menippe mercenaria",edible:"yes",
-   slot:{min:2.875,max:null,note:"Claw length min; strict season"},bagLimit:"Claws only; season & gear rules; VERIFY",notes:"Highly regulated; do not keep whole crab.",images:[]},
+   slot:{min:2.875,max:null,note:"Claw length min; strict season"},bagLimit:"Claws only; season & gear rules; VERIFY",seasons:"Typically Oct 15–May 1; VERIFY",notes:"Highly regulated; do not keep whole crab.",images:[]},
   // Catfish
   {key:"gafftopsail_catfish",group:"other",commonName:"Gafftopsail Catfish",scientificName:"Bagre marinus",commonsCategory:"Bagre marinus",edible:"acceptable",
-   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Often unregulated; VERIFY",notes:"Very slimy; serious spines—use caution.",images:[]},
+   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Often unregulated; VERIFY",seasons:"—",notes:"Very slimy; serious spines—use caution.",images:[]},
   {key:"hardhead_catfish",group:"other",commonName:"Hardhead Catfish",scientificName:"Ariopsis felis",commonsCategory:"Ariopsis felis",edible:"acceptable",
-   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Often unregulated; VERIFY",notes:"Common bycatch; careful with spines.",images:[]}
+   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Often unregulated; VERIFY",seasons:"—",notes:"Common bycatch; careful with spines.",images:[]},
+  // Additions requested
+  {key:"tarpon",group:"fish",commonName:"Tarpon (Catch & Release)",scientificName:"Megalops atlanticus",commonsCategory:"Megalops atlanticus",edible:"no",
+   slot:{min:0,max:null,note:"Catch & release only in FL; tag required for harvest"},bagLimit:"No harvest without tarpon tag; VERIFY",seasons:"—",notes:"Support fish in water; quick release.",images:[]},
+  {key:"gag_grouper",group:"fish",commonName:"Gag Grouper",scientificName:"Mycteroperca microlepis",commonsCategory:"Mycteroperca microlepis",edible:"yes",
+   slot:{min:24,max:null,note:"Verify Atlantic length (fork/total)"},bagLimit:"Aggregate & seasonal; VERIFY",seasons:"Atlantic openings/closures vary; VERIFY",notes:"Careful ID vs black grouper.",images:[]},
+  {key:"red_grouper",group:"fish",commonName:"Red Grouper",scientificName:"Epinephelus morio",commonsCategory:"Epinephelus morio",edible:"yes",
+   slot:{min:20,max:null,note:"Verify Atlantic length"},bagLimit:"Aggregate & seasonal; VERIFY",seasons:"Often seasonal; VERIFY",notes:"Reddish with white spots.",images:[]},
+  {key:"black_grouper",group:"fish",commonName:"Black Grouper",scientificName:"Mycteroperca bonaci",commonsCategory:"Mycteroperca bonaci",edible:"yes",
+   slot:{min:24,max:null,note:"Verify Atlantic length"},bagLimit:"Aggregate & seasonal; VERIFY",seasons:"Often seasonal; VERIFY",notes:"Boxy blotches; pale fin edges.",images:[]},
+  {key:"scamp",group:"fish",commonName:"Scamp Grouper",scientificName:"Mycteroperca phenax",commonsCategory:"Mycteroperca phenax",edible:"yes",
+   slot:{min:16,max:null,note:"Verify Atlantic length"},bagLimit:"Aggregate & seasonal; VERIFY",seasons:"Often seasonal; VERIFY",notes:"Lobed tail; delicate fillet.",images:[]},
+  {key:"atlantic_croaker",group:"fish",commonName:"Atlantic Croaker",scientificName:"Micropogonias undulatus",commonsCategory:"Micropogonias undulatus",edible:"decent",
+   slot:{min:0,max:null,note:"Often unregulated; VERIFY"},bagLimit:"Check local rules; VERIFY",seasons:"—",notes:"Croaking sound; easy ID.",images:[]},
+  {key:"striped_mullet",group:"fish",commonName:"Striped Mullet",scientificName:"Mugil cephalus",commonsCategory:"Mugil cephalus",edible:"yes",
+   slot:{min:0,max:null,note:"Gear rules may apply; VERIFY"},bagLimit:"Regional limits may apply; VERIFY",seasons:"—",notes:"Popular bait and smoked fish.",images:[]},
 ];
 
 // ---------- State ----------
 let species = loadFromLocal() || structuredClone(DEFAULT_SPECIES);
-let round = 0, scoreName = 0, scoreSlot = 0;
+let round = 0, scoreName = 0, scoreSlot = 0; let checkedThisRound = false;
 let current = null; // { key, img }
 let selectedName = null, selectedSlot = null;
 
@@ -204,16 +241,12 @@ function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.
 
 // --------- Wikimedia Commons fetch ---------
 async function fetchCommonsImagesFor(spec, targetCount=10){
-  // If already have >= targetCount images, skip
   if ((spec.images||[]).length >= targetCount) return spec.images;
-
   const candidates = [];
   const namesToTry = [];
   if (spec.commonsCategory) namesToTry.push(spec.commonsCategory);
   if (spec.scientificName) namesToTry.push(spec.scientificName);
   if (spec.commonName) namesToTry.push(spec.commonName);
-  // Normalize "Category:" prefix later
-
   for (const name of namesToTry){
     const title = name.startsWith("Category:") ? name : ("Category:" + name);
     try{
@@ -239,11 +272,8 @@ async function fetchCommonsImagesFor(spec, targetCount=10){
 }
 
 async function ensureImagesAll(){
-  const spinner = '<span class="spinner" title="loading"></span>';
-  $("#quiz-imgbox").innerHTML = `<div class="help">Fetching species images ${spinner}</div>`;
-  for (const sp of species){
-    await fetchCommonsImagesFor(sp, 10);
-  }
+  $("#quiz-imgbox").innerHTML = `<div class="help">Fetching species images <span class="spinner"></span></div>`;
+  for (const sp of species){ await fetchCommonsImagesFor(sp, 10); }
   $("#quiz-imgbox").innerHTML = `<div class="help">Images loaded. Click <span class="kbd">Start / Next</span> to begin.</div>`;
   renderStudy(); renderAdmin();
 }
@@ -261,32 +291,15 @@ $$(".tab").forEach(btn=>btn.addEventListener("click",()=>{
 }));
 
 // ---------- Quiz ----------
-function nextQuestion(){
-  $("#result").style.display="none";
-  selectedName = null; selectedSlot = null;
-  $("#btn-submit").disabled = true;
-
-  const playable = species.filter(s=>s.images && s.images.length>0);
-  if(playable.length===0){ $("#quiz-imgbox").innerHTML = '<div class="help">No images yet. Add some in Admin or check your network.</div>'; return; }
-  const sp = choice(playable);
-  const img = choice(sp.images);
-  current = { key: sp.key, img };
-
-  $("#quiz-imgbox").innerHTML = `<img src="${img}" alt="mystery">`;
-
-  // name options (4)
-  const others = shuffle(species.filter(s=>s.key!==sp.key)).slice(0,3);
-  const nameOptions = shuffle([sp, ...others]).map(s=>({key:s.key,label:s.commonName}));
-  const nameBox = $("#species-choices"); nameBox.innerHTML = "";
-  nameOptions.forEach(o=>{
-    const div = document.createElement("button");
-    div.className = "option";
-    div.textContent = o.label;
-    div.onclick = ()=>{ selectedName = o.key; highlightChoices(nameBox, div); maybeEnableSubmit(); };
-    nameBox.appendChild(div);
-  });
-
-  // slot options (4) — use correct + 3 distractors
+function buildNameOptions(sp){
+  // 3 options from same group, 1 from others (plus the correct answer)
+  const sameGroup = shuffle(species.filter(s=>s.key!==sp.key && s.group===sp.group));
+  const otherGroups = shuffle(species.filter(s=>s.group!==sp.group));
+  const picks = [...sameGroup.slice(0,3), ...otherGroups.slice(0,1)];
+  const pool = shuffle([sp, ...picks]).slice(0,4);
+  return shuffle(pool.map(s=>({key:s.key,label:s.commonName})));
+}
+function buildSlotOptions(sp){
   const correctText = inches(sp.slot) + (sp.slot.note ? ` (${sp.slot.note})` : "");
   const distract = [];
   const pool = species.filter(s=>s.key!==sp.key && s.slot).map(s=> inches(s.slot) + (s.slot.note ? ` (${s.slot.note})` : ""));
@@ -302,6 +315,36 @@ function nextQuestion(){
     if(!distract.includes(txt) && txt!==correctText) distract.push(txt);
   }
   const slotOptions = shuffle([correctText, ...distract]);
+  return slotOptions;
+}
+
+function nextQuestion(){
+  checkedThisRound=false;
+  $("#result").style.display="none";
+  selectedName = null; selectedSlot = null;
+  $("#btn-submit").disabled = true;
+
+  const playable = species.filter(s=>s.images && s.images.length>0);
+  if(playable.length===0){ $("#quiz-imgbox").innerHTML = '<div class="help">No images yet. Add some in Admin or check your network.</div>'; return; }
+  const sp = choice(playable);
+  const img = choice(sp.images);
+  current = { key: sp.key, img };
+
+  $("#quiz-imgbox").innerHTML = `<img src="${img}" alt="mystery">`;
+
+  // name options
+  const nameOptions = buildNameOptions(sp);
+  const nameBox = $("#species-choices"); nameBox.innerHTML = "";
+  nameOptions.forEach(o=>{
+    const div = document.createElement("button");
+    div.className = "option";
+    div.textContent = o.label;
+    div.onclick = ()=>{ selectedName = o.key; highlightChoices(nameBox, div); maybeEnableSubmit(); };
+    nameBox.appendChild(div);
+  });
+
+  // slot options
+  const slotOptions = buildSlotOptions(sp);
   const slotBox = $("#slot-choices"); slotBox.innerHTML = "";
   slotOptions.forEach(text=>{
     const div = document.createElement("button");
@@ -313,9 +356,14 @@ function nextQuestion(){
 
   round++; $("#round").textContent = round;
 }
-function highlightChoices(container, activeBtn){ Array.from(container.children).forEach(el=>el.classList.remove('active')); activeBtn.classList.add('active'); }
+
+function highlightChoices(container, activeBtn){
+  Array.from(container.children).forEach(el=>el.classList.remove("active"));
+  activeBtn.classList.add("active");
+}
 function maybeEnableSubmit(){ $("#btn-submit").disabled = !(selectedName && selectedSlot); }
-function submitAnswer(){
+
+async function submitAnswer(){
   if(!current) return;
   const sp = species.find(s=>s.key===current.key);
   const okName = selectedName === sp.key;
@@ -329,29 +377,44 @@ function submitAnswer(){
   const pct = Math.round(100*(scoreName+scoreSlot)/Math.max(1,round*2));
   $("#progressbar").style.width = pct + "%";
 
-  const msg = `${okName? "✅ Species correct" : "❌ Species: " + sp.commonName} • ${okSlot? "✅ Slot correct" : "❌ Slot: " + correctSlotText}`;
-  const res = $("#result"); res.textContent = msg; res.style.display = "block";
+  const msg = `${okName? "✅ Species correct" : "❌ Species: " + sp.commonName}<br>${okSlot? "✅ Slot correct" : "❌ Slot: " + correctSlotText}${sp.seasons? `<br><span class='help'>Season: ${sp.seasons}</span>`:``}`;
+  checkedThisRound=true;
+  await showModal({title:"Answer", html: msg, okText:"Next"});
+  nextQuestion();
 }
+
 function resetQuiz(){
   round=0; scoreName=0; scoreSlot=0; current=null; selectedName=null; selectedSlot=null;
   $("#round").textContent="0"; $("#score-name").textContent="0"; $("#score-slot").textContent="0";
   $("#progressbar").style.width="0%"; $("#species-choices").innerHTML=""; $("#slot-choices").innerHTML="";
-  $("#quiz-imgbox").innerHTML='<div class="help">Click <span class="kbd">Start / Next</span> to begin</div>';
+  $("#quiz-imgbox").innerHTML='<div class="help">Images loaded. Click <span class="kbd">Start / Next</span> to begin</div>';
   $("#result").style.display="none"; $("#btn-submit").disabled=true;
 }
-$("#btn-next").addEventListener("click", nextQuestion);
+
+// Skip image (for weird/ambiguous photos)
+function skipImage(){ nextQuestion(); }
+
+$("#btn-next").addEventListener("click", async()=>{
+  if(selectedName && selectedSlot && !checkedThisRound){
+    const sure = await showModal({title:"Skip check?", html:"You selected both answers. Are you sure you want to skip checking?", okText:"Skip", cancelText:"Go back"});
+    if(!sure) return;
+  }
+  nextQuestion();
+});
 $("#btn-submit").addEventListener("click", submitAnswer);
 $("#btn-reset").addEventListener("click", resetQuiz);
+$("#btn-skip").addEventListener("click", skipImage);
 
 // ---------- Study ----------
 function renderStudy(){
-  const th = `<tr><th>Group</th><th>Common name</th><th>Edible</th><th>Slot / Size</th><th>Bag / Limit</th><th>Notes</th><th>#Images</th></tr>`;
+  const th = `<tr><th>Group</th><th>Common name</th><th>Edible</th><th>Slot / Size</th><th>Bag / Limit</th><th>Season</th><th>Notes</th><th>#Images</th></tr>`;
   const rows = species.map(s=>`<tr>
     <td class="capitalize">${s.group}</td>
     <td>${s.commonName}</td>
     <td>${s.edible}</td>
     <td>${inches(s.slot)}${s.slot.note?` (${s.slot.note})`:``}</td>
     <td>${s.bagLimit||""}</td>
+    <td>${s.seasons||"—"}</td>
     <td>${s.notes||""}</td>
     <td>${s.images?.length||0}</td>
   </tr>`).join("");
@@ -379,6 +442,10 @@ function renderAdmin(){
         <div><div class="label">Bag / Limit</div><input class="input" value="${sp.bagLimit||""}" data-k="bag"></div>
         <div><div class="label">Notes</div><input class="input" value="${sp.notes||""}" data-k="notes"></div>
       </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px; margin-top:8px">
+        <div><div class="label">Season(s)</div><input class="input" value="${sp.seasons||""}" data-k="seasons"></div>
+        <div><div class="label">Commons Category</div><input class="input" value="${sp.commonsCategory||""}" data-k="cat"></div>
+      </div>
       <div style="margin-top:8px">
         <div class="label">Images (${sp.images.length})</div>
         <div class="row" style="flex-wrap:wrap; gap:12px; align-items:flex-start">
@@ -401,10 +468,10 @@ function renderAdmin(){
           <select class="select" data-k="edible">${["yes","no","sometimes","acceptable","decent"].map(g=>`<option ${sp.edible===g?"selected":""} value="${g}">${g}</option>`).join("")}</select>
         </div>
         <div style="grid-column:1/-1"><div class="label">Slot note</div><input class="input" value="${sp.slot.note||""}" data-k="note"></div>
-        <div style="grid-column:1/-1"><div class="label">Commons Category (used for auto-images)</div><input class="input" value="${sp.commonsCategory||""}" data-k="cat"></div>
         <div class="row" style="align-items:center;justify-content:flex-end"><button class="button small" data-del>Delete species</button></div>
       </div>
     `;
+    // wire events
     div.querySelectorAll("[data-remove]").forEach(btn=>btn.addEventListener("click",()=>{
       const url = decodeURIComponent(btn.getAttribute("data-remove"));
       sp.images = sp.images.filter(u=>u!==url); renderAdmin();
@@ -419,6 +486,7 @@ function renderAdmin(){
     div.querySelector("[data-k='max']").addEventListener("input",e=>{ const v=e.target.value.trim(); sp.slot.max = v===""? null : Number(v); });
     div.querySelector("[data-k='bag']").addEventListener("input",e=>{ sp.bagLimit = e.target.value; });
     div.querySelector("[data-k='notes']").addEventListener("input",e=>{ sp.notes = e.target.value; });
+    div.querySelector("[data-k='seasons']").addEventListener("input",e=>{ sp.seasons = e.target.value; });
     div.querySelector("[data-k='name']").addEventListener("input",e=>{ sp.commonName = e.target.value; });
     div.querySelector("[data-k='sci']").addEventListener("input",e=>{ sp.scientificName = e.target.value; });
     div.querySelector("[data-k='group']").addEventListener("change",e=>{ sp.group = e.target.value; });
@@ -441,35 +509,36 @@ $("#btn-add").addEventListener("click",()=>{
     commonsCategory: $("#new-cat").value.trim()||"",
     edible: $("#new-edible").value,
     slot: { min: ($("#new-min").value.trim()===""? null : Number($("#new-min").value)), max: ($("#new-max").value.trim()===""? null : Number($("#new-max").value)), note: "" },
-    bagLimit: $("#new-bag").value.trim(), notes: $("#new-notes").value.trim(),
+    bagLimit: $("#new-bag").value.trim(), notes: $("#new-notes").value.trim(), seasons: $("#new-seasons").value.trim(),
     images: ($("#new-images").value.trim() ? $("#new-images").value.split(",").map(s=>s.trim()) : [])
   };
   species.push(sp);
-  $("#new-name").value=$("#new-sci").value=$("#new-bag").value=$("#new-notes").value=$("#new-images").value=$("#new-cat").value="";
-  $("#new-min").value=$("#new-max").value="";
+  ["#new-name","#new-sci","#new-bag","#new-notes","#new-seasons","#new-images","#new-cat","#new-min","#new-max"].forEach(id=>$(id).value="");
   renderAdmin();
 });
 
-$("#btn-export").addEventListener("click",()=>{
-  const data = JSON.stringify(species, null, 2);
-  const blob = new Blob([data], {type:"application/json"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "species.json"; a.click();
-});
+// ---------- Modal helpers ----------
+let modalResolve = null;
+function showModal({title, html, okText="OK", cancelText=null}){
+  const backdrop = document.getElementById("modal-backdrop");
+  document.getElementById("modal-title").textContent = title || "Notice";
+  document.getElementById("modal-body").innerHTML = html || "";
+  const btnOk = document.getElementById("modal-ok");
+  const btnCancel = document.getElementById("modal-cancel");
+  btnOk.textContent = okText;
+  btnCancel.style.display = cancelText ? "inline-block" : "none";
+  btnCancel.textContent = cancelText || "";
+  backdrop.style.display = "flex";
+  return new Promise((resolve)=>{ modalResolve = resolve; });
+}
+function closeModal(result=true){
+  document.getElementById("modal-backdrop").style.display = "none";
+  if(modalResolve){ modalResolve(result); modalResolve=null; }
+}
+document.getElementById("modal-ok").addEventListener("click", ()=>closeModal(true));
+document.getElementById("modal-cancel").addEventListener("click", ()=>closeModal(false));
 
-$("#btn-import").addEventListener("click",()=>{
-  try{
-    const raw = $("#bulk-json").value.trim();
-    const arr = JSON.parse(raw);
-    if(!Array.isArray(arr)) throw new Error("JSON must be an array");
-    species = arr;
-    alert("Imported JSON into memory. Click Save to persist in browser.");
-    renderAdmin(); renderStudy();
-  }catch(e){ alert("Import failed: " + e.message); }
-});
-$("#btn-save").addEventListener("click",()=>{ saveToLocal(); alert("Saved to this browser."); });
-$("#btn-clear").addEventListener("click",()=>{ localStorage.removeItem("bol_species"); alert("Cleared browser copy."); });
-
-// init: fetch images then render
+// init
 document.getElementById("year").textContent = new Date().getFullYear();
 renderStudy(); renderAdmin();
 ensureImagesAll();
